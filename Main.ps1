@@ -119,7 +119,4 @@ ri $input
  $MSWord.EmailOptions.EmailSignature.NewMessageSignature=$a
  $MSWord.EmailOptions.EmailSignature.ReplyMessageSignature=$b
 
- $MSWord.EmailOptions.EmailSignature.NewMessageSignature
- $MSWord.EmailOptions.EmailSignature.ReplyMessageSignature
-
  ii $output_excel
