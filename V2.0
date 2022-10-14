@@ -1,10 +1,9 @@
+[System.Windows.Forms.MessageBox]::Show("This Script will bath convert .msg files to .pdf files.`nIt will save any attachments along the converted file.`nAt the end an Excel file with links will be created.`n`nHas this Script been already run, an additional file`nwith semicolon and number attached will be created.", "ATTENTION", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Asterisk )|out-null
 $o = new-object -comobject outlook.application
 $1 = "C:\Program Files\Google\Chrome\Application\chrome.exe"
 Set-Alias -Name chrome -Value $1
-$path = "PATH"
-$XL = New-Object -ComObject Excel.Application
-$XL.Visible = $false                                         # Show application window
-$xlFixedFormat = [Microsoft.Office.Interop.Excel.XlFileFormat]::xlOpenXMLWorkbook
+$path = "PATH\test.csv"
+
 
  
  Add-Type -AssemblyName System.Windows.Forms|out-null
@@ -21,8 +20,23 @@ $xlFixedFormat = [Microsoft.Office.Interop.Excel.XlFileFormat]::xlOpenXMLWorkboo
 $input = 'PATH\New.csv'  
 $output_excel = 'PATH\New.xlsx' 
 
-cd $path
 
+
+function msg_inc1 { 
+$script:pdfname = $msgDirectory + '\Converted\' + $msgBaseName + '-' + $counter2 + '.pdf'
+$script:htmlname = $pdfname -replace('.pdf','.html')
+
+msg_main1
+
+}
+
+function msg_inc2 { 
+$script:pdfname = $msgDirectory + '\Converted\' + $msgBaseName + '\'+ $msgBaseName + '-' + $counter2 + '.pdf'
+$script:htmlname = $pdfname -replace('.pdf','.html')
+
+msg_main2
+
+}
 
 function att_inc
     {
@@ -34,14 +48,14 @@ function att_inc
 [System.Collections.ArrayList]$output = @()
 
 
-gc test.csv|
+gc $path|
     Select -skip 1|
         %{
             $_|Add-Member -MemberType NoteProperty -Name 'BaseName' -Value $_.substring($_.Lastindexof('\')+1).substring(0, $_.substring($_.Lastindexof('\')+1).Lastindexof('.'));
             $_|Add-Member -MemberType NoteProperty -Name 'FileName' -Value $_.substring($_.Lastindexof('\')+1);
             $_|Add-Member -MemberType NoteProperty -Name 'FullName' -Value $_;
-            $_|Add-Member -MemberType NoteProperty -Name 'Folder' -Value $_.substring(0, $_.Lastindexof('\'));
-            $_|Add-Member -MemberType ScriptProperty -Name 'New Loc' -Value {if($msg.Attachments.Count -eq 0){$msgDirectory + '\Converted\'}elseif($msg.Attachments.Count -ge 1){$msgDirectory + '\Converted\' + $msgBaseName + '\'}};
+            $_|Add-Member -MemberType NoteProperty -Name 'Folder'   -Value $_.substring(0, $_.Lastindexof('\'));
+            
                 $msgBaseName = $_.BaseName
                 $msgFullname = $_.FullName
                 $msgDirectory = $_.Folder
@@ -56,34 +70,57 @@ gc test.csv|
                         #$results
                  }
             $_|Add-Member -MemberType ScriptProperty -Name 'Attachments' -Value {if($results -eq 0){'NO'}else{'Yes'}};
-        $output.Add(($_|Select FullName, FileName, "New Loc",  Attachments))|Out-Null
+            $_|Add-Member -MemberType ScriptProperty -Name 'New Loc'     -Value {if($results -eq 0){$msgDirectory + '\Converted\'}else{$msgDirectory + '\Converted\' + $msgBaseName + '\'}};
 
-<#
-$msgBaseName = $_.BaseName
-$msgFullname = $_.FullName
-$msgDirectory = $_.Folder
-$msgName = $_.Filename
-$msg = $o.CreateItemFromTemplate($msgFullname)
-#>
+
+            $output.Add(($_|Select FullName, FileName, "New Loc",  Attachments))|Out-Null
+
+
 
 
         if($results -eq 0){
-if((test-path ($msgDirectory + '\Converted\')) -eq $false){New-Item -ItemType Directory -Path $msgDirectory -Name '\Converted\'|Out-Null}
-$htmlname = $msgDirectory + '\Converted\' + ($msgName -replace '.msg', '.html')
-$pdfname = $msgDirectory + '\Converted\' + ($msgName -replace '.msg', '.pdf')
-$msg.SaveAs($htmlname, 5)
-chrome --headless --disable-gpu --print-to-pdf=$pdfname  $htmlname --print-to-pdf-no-header
-start-sleep -Milliseconds 500
-Remove-Item -Path $htmlname
-Remove-Item -Path ($msgDirectory + '\Converted\' + ($msgBaseName + '_files')) -Recurse -Force
-}
-else
-{
-if((test-path ($msgDirectory + '\Converted\')) -eq $false){New-Item -ItemType Directory -Path $msgDirectory -Name '\Converted\'|Out-Null}
-if((test-path ($msgDirectory + '\Converted\' + $msgBaseName)) -eq $false){New-Item -ItemType Directory -Path ($msgDirectory + '\Converted\') -Name $msgBaseName|out-null}
-$htmlname = $msgDirectory + '\Converted\' + $msgBaseName + '\' + ($msgName -replace '.msg', '.html')
-$pdfname =  $msgDirectory + '\Converted\' + $msgBaseName + '\' + ($msgName -replace '.msg', '.pdf')
-$msg.SaveAs($htmlname, 5)
+                            if((test-path ($msgDirectory + '\Converted\')) -eq $false){
+                                                                      New-Item -ItemType Directory -Path $msgDirectory -Name '\Converted\'|Out-Null}
+                                                                      $htmlname = $msgDirectory + '\Converted\' + ($msgName -replace '.msg', '.html')
+                                                                      $pdfname = $msgDirectory + '\Converted\' + ($msgName -replace '.msg', '.pdf')
+
+                                                                      $counter2 = 0
+ 
+                                                                      Function msg_main1 {
+                                                                      if((test-path $pdfname) -eq $false){$msg.SaveAs($htmlname, 5)}else{ $counter2++ ; msg_inc1}
+                                                                                         }                 
+                                                                msg_main1
+
+
+                            
+
+                            chrome --headless --disable-gpu --print-to-pdf=$script:pdfname  $script:htmlname --print-to-pdf-no-header
+                            start-sleep -Milliseconds 500
+                            Remove-Item -Path $htmlname
+                            ri -Path ($msgDirectory + '\Converted\' + ($msgBaseName + "*_files")) -Recurse -Force 
+                            }
+                            else
+                            {
+                            if((test-path ($msgDirectory + '\Converted\')) -eq $false){New-Item -ItemType Directory -Path $msgDirectory -Name '\Converted\'|Out-Null}
+                            if((test-path ($msgDirectory + '\Converted\' + $msgBaseName)) -eq $false){New-Item -ItemType Directory -Path ($msgDirectory + '\Converted\') -Name $msgBaseName|out-null}
+                            $htmlname = $msgDirectory + '\Converted\' + $msgBaseName + '\' + ($msgName -replace '.msg', '.html')
+                            $pdfname =  $msgDirectory + '\Converted\' + $msgBaseName + '\' + ($msgName -replace '.msg', '.pdf')
+
+                            Function msg_main2 {
+                            if((test-path $pdfname) -eq $false){
+                            $msg.SaveAs($htmlname, 5)
+                            }else{
+                             $counter2++ ; msg_inc2
+                             }
+                                            }                 
+                                            msg_main2
+
+
+                            chrome --headless --disable-gpu --print-to-pdf=$script:pdfname  $script:htmlname --print-to-pdf-no-header
+                            Start-Sleep -Milliseconds 500
+                            Remove-Item -Path $script:htmlname
+                            Remove-Item -Path ($msgDirectory + '\Converted\' + $msgBaseName + '\' + ($msgBaseName + '*_files')) -Recurse -Force
+                            }
 
  $msg.Attachments|%{
                     $counter = 0  
@@ -108,32 +145,14 @@ $msg.SaveAs($htmlname, 5)
                         {
                         main
                         }
-
-
-<#
-    $counter = 0  
-    $attname = $msgDirectory + "\Converted\" +$msgBaseName + '\' + $_.FileName      
-            function main {
-                if((test-path $attname) -eq $false){
-                $_.SaveAsFile($attname)
-                } 
-                    else {
-                        $counter++
-                        att_inc
-                         }
-                         }
-            main
-            #>
-}
-chrome --headless --disable-gpu --print-to-pdf=$pdfname  $htmlname --print-to-pdf-no-header
-Start-Sleep -Milliseconds 500
-Remove-Item -Path $htmlname
-Remove-Item -Path ($msgDirectory + '\Converted\' + $msgBaseName + '\' + ($msgBaseName + '_files')) -Recurse -Force
 }
 }
 
 $output|Export-Csv -path $input -NoTypeInformation
 
+$XL = New-Object -ComObject Excel.Application
+$XL.Visible = $false                                         # Show application window
+$xlFixedFormat = [Microsoft.Office.Interop.Excel.XlFileFormat]::xlOpenXMLWorkbook
 $xlBook = $XL.Workbooks.Open($input)                                   # Open workbook
 
 # Needs option "Trust Access to the VBA Project object model" (registry value AccessVBOM) set and macros enabled!
@@ -159,21 +178,16 @@ $XL.Quit()
 [System.Runtime.Interopservices.Marshal]::ReleaseComObject([System.__ComObject]$XL)|out-null
 [GC]::Collect()
 
-<#
-$o.Quit()
-[System.Runtime.Interopservices.Marshal]::ReleaseComObject([System.__ComObject]$o)|out-null
-[GC]::Collect()
-#>
 
 ri $input
 
-[System.Windows.Forms.MessageBox]::Show("Press OK to Continue")|out-null
+[System.Windows.Forms.MessageBox]::Show("Restoring Outlook Signatures")|out-null
  $MSWord.EmailOptions.EmailSignature.NewMessageSignature=$a
  $MSWord.EmailOptions.EmailSignature.ReplyMessageSignature=$b
 
-<#$MSWord.Quit()
-#[System.Runtime.Interopservices.Marshal]::ReleaseComObject([System.__ComObject]$MSWord)|out-null
-#[GC]::Collect()
-#>
+$MSWord.Quit()
+[System.Runtime.Interopservices.Marshal]::ReleaseComObject([System.__ComObject]$MSWord)|out-null
+[GC]::Collect()
 
- #ii $output_excel
+
+ ii $output_excel
